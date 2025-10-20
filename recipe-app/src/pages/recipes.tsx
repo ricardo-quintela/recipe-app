@@ -1,5 +1,12 @@
+import { Button, Container } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
+
 export function Recipes() {
-    return <div>
-        <h1>Recipes works!</h1>
-    </div>
+	const navigate = useNavigate();
+
+	return (
+		<Container>
+			<Button onClick={() => navigate("add-recipe")}>New recipe</Button>
+		</Container>
+	);
 }
