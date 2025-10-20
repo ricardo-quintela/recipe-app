@@ -2,127 +2,99 @@ import { useEffect, useState } from "react";
 import { Container, Spinner, Table } from "react-bootstrap";
 import { SearchForm } from "../components/form/search-form/SearchForm";
 import type { Ingredient } from "../data/Ingredient";
-import DatabaseService, { ETable } from "../services/DatabaseService";
+import IngredientService from "../services/IngredientService";
 
 export function Ingredients() {
-    const [ingredients, setIngredients] = useState<Ingredient[]>([]);
-    const [filtered, setFiltered] = useState<Ingredient[]>([]);
-    const [loading, setLoading] = useState<boolean>(false);
-    const [error, setError] = useState<boolean>(false);
+	const [filtered, setFiltered] = useState<Ingredient[]>([]);
+	const [loading, setLoading] = useState<boolean>(false);
+	const [error, setError] = useState<boolean>(false);
 
-    async function getIngredients() {
-        setLoading(true);
-        setError(false);
-        try {
-            const fetched = await DatabaseService.getAll(ETable.INGREDIENT);
-            setIngredients(fetched);
-            setFiltered(fetched);
-        } catch (e) {
-            setError(true);
-        } finally {
-            setLoading(false);
-        }
-    }
+	const ingredients = IngredientService.getIngredients();
 
-    async function addIngredient(text: string) {
-        const ingredient: Ingredient = {
-            name: text,
-            stock: 0,
-        };
+	function searchIngredients(term: string) {
+		if (term.length === 0) {
+			setFiltered(ingredients);
+			return false;
+		}
 
-        const id = await DatabaseService.add(ETable.INGREDIENT, ingredient);
+		const searched = ingredients.filter(
+			(ingredient) =>
+				ingredient.name.toLowerCase().slice(0, term.length) ===
+				term.toLowerCase().trim()
+		);
 
-        ingredient.id = id;
+		setFiltered(searched);
 
-        setIngredients((prev) => [...prev, ingredient]);
-    }
+		return searched.length > 0;
+	}
 
-    function searchIngredients(term: string) {
-        if (term.length === 0) {
-            setFiltered(ingredients);
-            return false;
-        }
+	useEffect(() => {
+		setFiltered(ingredients);
+	}, [ingredients]);
 
-        const searched = ingredients.filter(
-            (ingredient) =>
-                ingredient.name.toLowerCase().slice(0, term.length) ===
-                term.toLowerCase().trim()
-        );
+	return (
+		<Container fluid className="d-flex flex-column gap-2">
+			<SearchForm
+				placeholder="Ingredient"
+				onSubmit={(ingredient) =>
+					IngredientService.addIngredient(ingredient)
+				}
+				search={searchIngredients}
+			/>
 
-        setFiltered(searched);
-
-        return searched.length > 0;
-    }
-
-    useEffect(() => {
-        getIngredients();
-    }, []);
-
-    useEffect(() => {
-        setFiltered(ingredients);
-    }, [ingredients]);
-
-    return (
-        <Container fluid className="d-flex flex-column gap-2">
-            <SearchForm
-                placeholder="Ingredient"
-                onSubmit={addIngredient}
-                search={searchIngredients}
-            />
-
-            <Table striped bordered hover>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Category</th>
-                        <th>Stock</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {error ? (
-                        <tr>
-                            <td colSpan={3}>
-                                <Container
-                                    fluid
-                                    className="d-flex justify-content-center text-danger"
-                                >
-                                    An error occurred
-                                </Container>
-                            </td>
-                        </tr>
-                    ) : loading ? (
-                        <tr>
-                            <td colSpan={3}>
-                                <Container
-                                    fluid
-                                    className="d-flex justify-content-center"
-                                >
-                                    <Spinner />
-                                </Container>
-                            </td>
-                        </tr>
-                    ) : !filtered.length ? (
-                        <tr>
-                            <td colSpan={3}>
-                                <Container
-                                    fluid
-                                    className="d-flex justify-content-center"
-                                >
-                                    No ingredients found
-                                </Container>
-                            </td>
-                        </tr>
-                    ) : (
-                        filtered.map((ingredient) => (
-                            <tr key={`ingredient-${ingredient.id}`}>
-                                <td>{ingredient.name}</td>
-                                <td>{ingredient.category ?? "-"}</td>
-                                <td>{ingredient.stock}</td>
-                            </tr>
-                        ))
-                    )}
-                </tbody>
-            </Table>
-        </Container>
-    );
+			<Table striped bordered hover>
+				<thead>
+					<tr>
+						<th>Name</th>
+						<th>Category</th>
+						<th>Stock</th>
+					</tr>
+				</thead>
+				<tbody>
+					{error ? (
+						<tr>
+							<td colSpan={3}>
+								<Container
+									fluid
+									className="d-flex justify-content-center text-danger"
+								>
+									An error occurred
+								</Container>
+							</td>
+						</tr>
+					) : loading ? (
+						<tr>
+							<td colSpan={3}>
+								<Container
+									fluid
+									className="d-flex justify-content-center"
+								>
+									<Spinner />
+								</Container>
+							</td>
+						</tr>
+					) : !filtered.length ? (
+						<tr>
+							<td colSpan={3}>
+								<Container
+									fluid
+									className="d-flex justify-content-center"
+								>
+									No ingredients found
+								</Container>
+							</td>
+						</tr>
+					) : (
+						filtered.map((ingredient) => (
+							<tr key={`ingredient-${ingredient.id}`}>
+								<td>{ingredient.name}</td>
+								<td>{ingredient.category ?? "-"}</td>
+								<td>{ingredient.stock}</td>
+							</tr>
+						))
+					)}
+				</tbody>
+			</Table>
+		</Container>
+	);
 }
