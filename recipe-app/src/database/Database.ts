@@ -11,9 +11,9 @@ export default class Database extends Dexie {
 	constructor(version: number) {
 		super("database");
 		this.version(version).stores({
-			ingredients: "++id, name, category",
-			recipes: "++id, name, createdAt",
-            shoppingLists: "++id, name, createdAt"
+			ingredients: "++id, nameLower, name",
+			recipes: "++id, nameLower, name",
+            shoppingLists: "++id, nameLower, name"
 		});
 	}
 }

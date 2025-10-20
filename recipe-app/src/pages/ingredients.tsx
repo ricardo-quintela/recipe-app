@@ -2,99 +2,117 @@ import { useEffect, useState } from "react";
 import { Container, Spinner, Table } from "react-bootstrap";
 import { SearchForm } from "../components/form/search-form/SearchForm";
 import type { Ingredient } from "../data/Ingredient";
-import IngredientService from "../services/IngredientService";
+import DatabaseService from "../services/DatabaseService";
 
 export function Ingredients() {
-	const [filtered, setFiltered] = useState<Ingredient[]>([]);
-	const [loading, setLoading] = useState<boolean>(false);
-	const [error, setError] = useState<boolean>(false);
+    const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+    const [filtered, setFiltered] = useState<Ingredient[]>([]);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [error, setError] = useState<boolean>(false);
 
-	const ingredients = IngredientService.getIngredients();
+    async function searchIngredient(term: string) {
+        const trimmed = term.trim();
+        if (trimmed === "") return false;
 
-	function searchIngredients(term: string) {
-		if (term.length === 0) {
-			setFiltered(ingredients);
-			return false;
-		}
+        return (
+            (await DatabaseService.database.ingredients
+                .where("nameLower")
+                .startsWith(trimmed)
+                .count()) > 0
+        );
+    }
 
-		const searched = ingredients.filter(
-			(ingredient) =>
-				ingredient.name.toLowerCase().slice(0, term.length) ===
-				term.toLowerCase().trim()
-		);
+    async function addIngredient(name: string) {
+        if (await searchIngredient(name)) return;
 
-		setFiltered(searched);
+        const ingredient: Ingredient = {
+            name,
+            nameLower: name.toLowerCase(),
+            stock: 0,
+        };
 
-		return searched.length > 0;
-	}
+        DatabaseService.database.ingredients.add(ingredient);
+        setIngredients((prev) => [...prev, ingredient]);
+    }
 
-	useEffect(() => {
-		setFiltered(ingredients);
-	}, [ingredients]);
+    useEffect(() => {
+        setLoading(true);
+        setError(false);
+        DatabaseService.database.ingredients
+            .toArray()
+            .then((result) => setIngredients(result))
+            .catch((e) => {
+                setError(true);
+                console.error("Failed to fetch ingredients: ", e);
+            })
+            .finally(() => setLoading(false));
+    }, []);
 
-	return (
-		<Container fluid className="d-flex flex-column gap-2">
-			<SearchForm
-				placeholder="Ingredient"
-				onSubmit={(ingredient) =>
-					IngredientService.addIngredient(ingredient)
-				}
-				search={searchIngredients}
-			/>
+    useEffect(() => {
+        setFiltered(ingredients);
+    }, [ingredients]);
 
-			<Table striped bordered hover>
-				<thead>
-					<tr>
-						<th>Name</th>
-						<th>Category</th>
-						<th>Stock</th>
-					</tr>
-				</thead>
-				<tbody>
-					{error ? (
-						<tr>
-							<td colSpan={3}>
-								<Container
-									fluid
-									className="d-flex justify-content-center text-danger"
-								>
-									An error occurred
-								</Container>
-							</td>
-						</tr>
-					) : loading ? (
-						<tr>
-							<td colSpan={3}>
-								<Container
-									fluid
-									className="d-flex justify-content-center"
-								>
-									<Spinner />
-								</Container>
-							</td>
-						</tr>
-					) : !filtered.length ? (
-						<tr>
-							<td colSpan={3}>
-								<Container
-									fluid
-									className="d-flex justify-content-center"
-								>
-									No ingredients found
-								</Container>
-							</td>
-						</tr>
-					) : (
-						filtered.map((ingredient) => (
-							<tr key={`ingredient-${ingredient.id}`}>
-								<td>{ingredient.name}</td>
-								<td>{ingredient.category ?? "-"}</td>
-								<td>{ingredient.stock}</td>
-							</tr>
-						))
-					)}
-				</tbody>
-			</Table>
-		</Container>
-	);
+    return (
+        <Container fluid className="d-flex flex-column gap-2">
+            <SearchForm
+                placeholder="Ingredient"
+                onSubmit={(ingredient) => addIngredient(ingredient)}
+                search={searchIngredient}
+            />
+
+            <Table striped bordered hover>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Stock</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {error ? (
+                        <tr>
+                            <td colSpan={3}>
+                                <Container
+                                    fluid
+                                    className="d-flex justify-content-center text-danger"
+                                >
+                                    An error occurred
+                                </Container>
+                            </td>
+                        </tr>
+                    ) : loading ? (
+                        <tr>
+                            <td colSpan={3}>
+                                <Container
+                                    fluid
+                                    className="d-flex justify-content-center"
+                                >
+                                    <Spinner />
+                                </Container>
+                            </td>
+                        </tr>
+                    ) : !filtered.length ? (
+                        <tr>
+                            <td colSpan={3}>
+                                <Container
+                                    fluid
+                                    className="d-flex justify-content-center"
+                                >
+                                    No ingredients found
+                                </Container>
+                            </td>
+                        </tr>
+                    ) : (
+                        filtered.map((ingredient) => (
+                            <tr key={`ingredient-${ingredient.id}`}>
+                                <td>{ingredient.name}</td>
+                                <td>{ingredient.category ?? "-"}</td>
+                                <td>{ingredient.stock}</td>
+                            </tr>
+                        ))
+                    )}
+                </tbody>
+            </Table>
+        </Container>
+    );
 }
